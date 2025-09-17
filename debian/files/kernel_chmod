@@ -10,7 +10,7 @@ dtb_files='<DTB_FILES>'
 
 # passing the kernel version is required
 if [ -z "${version}" ]; then
-        echo >&2 "E: kernel_chmod: ${DPKG_MAINTSCRIPT_PACKAGE:-kernel package} did not pass a version number"
+        echo -e >&2 "E: kernel_chmod: ${DPKG_MAINTSCRIPT_PACKAGE:-kernel package} did not pass a version number"
         exit 2
 fi
 

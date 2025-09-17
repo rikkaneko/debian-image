@@ -31,7 +31,7 @@ main() {
     # check for media file
     if ! [ -e "$deb_media" ]; then
         perr "unable to find debian source media: $deb_media";
-        echo "run: ${grn}sh debian/make_debian_img.sh${rst}\n"
+        echo -e "run: ${grn}sh debian/make_debian_img.sh${rst}\n"
         exit 1;
     fi
 
@@ -56,10 +56,10 @@ setup_image() {
     local outbin="$4"
     local dl_dir="$5"
 
-    echo "${h1}configuring debian image for board ${yel}$board${rst}${bld}...${rst}"
+    echo -e "${h1}configuring debian image for board ${yel}$board${rst}${bld}...${rst}"
 
     if [ -f "$outbin/$board"*".img"* ]; then
-        echo "image already exists, skipping..."
+        echo -e "image already exists, skipping..."
         return
     fi
 
@@ -90,8 +90,8 @@ setup_image() {
     # rename to final name
     mv "$tmp_img_name" "$outbin/$img_name"
 
-    echo "\n${cya}image $outbin/$img_name is ready${rst}"
-    echo "(use \"sudo mount -no loop,offset=16M $outbin/$img_name /mnt\" to mount)\n"
+    echo -e "\n${cya}image $outbin/$img_name is ready${rst}"
+    echo -e "(use \"sudo mount -no loop,offset=16M $outbin/$img_name /mnt\" to mount)\n"
 }
 
 seal_image() {
@@ -123,7 +123,7 @@ setup_kernel() {
     local board="$2"
     local dl_dir="$3"
 
-    echo "${h1}updating packages...${rst}"
+    echo -e "${h1}updating packages...${rst}"
     sudo chroot "$mountpt" apt update
 
     case "$board" in
@@ -140,7 +140,7 @@ setup_kernel() {
             ;;
     esac
 
-    echo "${h1}upgrading packages...${rst}"
+    echo -e "${h1}upgrading packages...${rst}"
     sudo chroot "$mountpt" apt -y upgrade
     sudo chroot "$mountpt" apt clean
 }
@@ -158,7 +158,7 @@ setup_dtb() {
     fi
 
     local dtb_file="${board}.dtb"
-    echo "${h1}configuring device tree: ${yel}$dtb_file${rst}"
+    echo -e "${h1}configuring device tree: ${yel}$dtb_file${rst}"
 
     local dtb_cfg="configs/dtb_${board}.cfg"
     if [ -f "$dtb_cfg" ]; then
@@ -184,9 +184,9 @@ setup_hostname() {
     local dist=$(cat "$mountpt/etc/os-release" | sed -rn 's/VERSION_CODENAME=(.*)/\1/p')
     local hostname="${dist}-${board}"
 
-    echo -n "${h1}configuring hostname: ${yel}"
-    echo "$hostname" | sudo tee "$mountpt/etc/hostname"
-    echo -n "${rst}"
+    echo -e -n "${h1}configuring hostname: ${yel}"
+    echo -e "$hostname" | sudo tee "$mountpt/etc/hostname"
+    echo -e -n "${rst}"
     sudo sed -i "s/\(127\.0\.1\.1\).*/\1\t$hostname/" "$mountpt/etc/hosts"
 }
 
@@ -214,7 +214,7 @@ install_uboot() {
     test "$sha" = $(sha256sum "$tmpdir/${board}/u-boot-rockchip.bin" | cut -c1-64)
     sudo dd bs=4K seek=8 if="$tmpdir/${board}/u-boot-rockchip.bin" of="$img_name" conv=notrunc,fsync
     rm -rf "$tmpdir"
-    echo "u-boot installed successfully"
+    echo -e "u-boot installed successfully"
 }
 
 get_deps() {
@@ -245,7 +245,7 @@ get_uboot_bins() {
             psec "skipping board (already downloaded): $board"
         else
             psec "downloading board: $board"
-            wget -P "$dl_dir" "$uboot_url/${board}.zip" || { rc=$?; echo "failed to download ${board}.zip"; exit $rc; }
+            wget -P "$dl_dir" "$uboot_url/${board}.zip" || { rc=$?; echo -e "failed to download ${board}.zip"; exit $rc; }
         fi
     done
 }
@@ -279,7 +279,7 @@ extract_dtbs() {
     mkdir -p "$dl_dir"
     rm -f "$dl_dir/"*
     mv "$tmpdir/rockchip/"* "$dl_dir"
-    echo "dtb files extracted to $dl_dir"
+    echo -e "dtb files extracted to $dl_dir"
 
     rm -rf "$tmpdir"
 }
@@ -292,7 +292,7 @@ mount_media() {
         unmount_media "$mountpt"
     fi
 
-    echo "${h1}mounting media: ${yel}$media${rst}"
+    echo -e "${h1}mounting media: ${yel}$media${rst}"
     mkdir -p "$mountpt"
 
     sudo mount -no loop,offset=16M "$media" "$mountpt"
@@ -306,7 +306,7 @@ mount_media() {
     done
 
     local part="$(/usr/sbin/losetup -nO name -j "$media")"
-    echo "partition ${cya}$part${rst} successfully mounted on ${cya}$mountpt${rst}"
+    echo -e "partition ${cya}$part${rst} successfully mounted on ${cya}$mountpt${rst}"
 }
 
 unmount_media() {
@@ -317,7 +317,7 @@ unmount_media() {
         mountpoint -q "$mountpt/$mp" && mlist="$mlist $mountpt/$mp"
     done
 
-    [ -n "$mlist" ] && echo "${h1}unmounting mount points...${rst}"
+    [ -n "$mlist" ] && echo -e "${h1}unmounting mount points...${rst}"
     for mp in $mlist; do
         sudo umount -v "$mp"
     done
@@ -336,17 +336,17 @@ on_exit() {
 
 phead() {
     local msg="$1"
-    echo "\n${h1}$msg...${rst}"
+    echo -e "\n${h1}$msg...${rst}"
 }
 
 psec() {
     local msg="$1"
-    echo "\n${mag}=====  ${cya}$msg${mag}  =====${rst}"
+    echo -e "\n${mag}=====  ${cya}$msg${mag}  =====${rst}"
 }
 
 perr() {
     local msg="$1"
-    echo "\n${bld}${yel}error: $msg${rst}\n" >&2
+    echo -e "\n${bld}${yel}error: $msg${rst}\n" >&2
 }
 
 # require linux

@@ -21,7 +21,7 @@ fi
 
 
 get_dtb() {
-    echo '<DTB_FILE>'
+    echo -e '<DTB_FILE>'
 }
 
 gen_menu_header() {
@@ -31,16 +31,16 @@ gen_menu_header() {
         mpv=1
     fi
 
-    echo '#'
-    echo '# this is an automatically generated file'
-    echo '# edit options at the top of the /boot/mk_extlinux file'
-    echo '# then run /boot/mk_extlinux to rebuild'
-    echo '#'
-    echo
-    echo 'menu title u-boot menu'
-    echo "prompt ${mpv}"
-    echo 'default l0'
-    echo "timeout $((EXTL_MENU_TIMEOUT * 10))"
+    echo -e '#'
+    echo -e '# this is an automatically generated file'
+    echo -e '# edit options at the top of the /boot/mk_extlinux file'
+    echo -e '# then run /boot/mk_extlinux to rebuild'
+    echo -e '#'
+    echo -e
+    echo -e 'menu title u-boot menu'
+    echo -e "prompt ${mpv}"
+    echo -e 'default l0'
+    echo -e "timeout $((EXTL_MENU_TIMEOUT * 10))"
 }
 
 gen_menu_item() {
@@ -49,15 +49,15 @@ gen_menu_item() {
     local dtb_file="$3"
     local dtbos="$4"
     local prms="$5"
-    local boot_dir=$([ "$(stat --printf %d /)" -eq "$(stat --printf %d /boot)" ] && echo '/boot')
+    local boot_dir=$([ "$(stat --printf %d /)" -eq "$(stat --printf %d /boot)" ] && echo -e '/boot')
 
-    echo "label l${num}"
-    echo "\tmenu label ${PRETTY_NAME} ${kver}"
-    echo "\tlinux ${boot_dir}/vmlinuz-${kver}"
-    echo "\tinitrd ${boot_dir}/initrd.img-${kver}"
-    echo "\tfdt ${boot_dir}/${dtb_file}-${kver}"
-    [ -z "${dtbos}" ] || echo "\tfdtoverlays ${dtbos}"
-    echo "\tappend ${prms}"
+    echo -e "label l${num}"
+    echo -e "\tmenu label ${PRETTY_NAME} ${kver}"
+    echo -e "\tlinux ${boot_dir}/vmlinuz-${kver}"
+    echo -e "\tinitrd ${boot_dir}/initrd.img-${kver}"
+    echo -e "\tfdt ${boot_dir}/${dtb_file}-${kver}"
+    [ -z "${dtbos}" ] || echo -e "\tfdtoverlays ${dtbos}"
+    echo -e "\tappend ${prms}"
 }
 
 get_root_dev() {
@@ -65,13 +65,13 @@ get_root_dev() {
     if [ -z "${rootdev}" ]; then
         rootdev="$(cat /proc/cmdline | sed -re 's/.*root=([^[:space:]]*).*/\1/')"
     fi
-    echo "${rootdev}"
+    echo -e "${rootdev}"
 }
 
 main() {
     local dtb_file="$(get_dtb)"
     local kvers="$(linux-version list | linux-version sort --reverse | head -n ${EXTL_MENU_ITEMS})"
-    local kver_count="$(echo "${kvers}" | wc -w)"
+    local kver_count="$(echo -e "${kvers}" | wc -w)"
 
     local config="$(gen_menu_header ${kver_count})\n\n"
 
@@ -89,12 +89,12 @@ main() {
 
     mkdir -p '/boot/extlinux'
     [ -f '/boot/extlinux/extlinux.conf' ] && mv '/boot/extlinux/extlinux.conf' '/boot/extlinux/extlinux.conf.bak'
-    echo "${config}" > '/boot/extlinux/extlinux.conf'
-    echo 'file /boot/extlinux/extlinux.conf updated successfully'
+    echo -e "${config}" > '/boot/extlinux/extlinux.conf'
+    echo -e 'file /boot/extlinux/extlinux.conf updated successfully'
 }
 
 if [ 0 -ne $(id -u) ]; then
-    echo "E: $(basename "$0"): this script must be run as root"
+    echo -e "E: $(basename "$0"): this script must be run as root"
     exit 9
 fi
 

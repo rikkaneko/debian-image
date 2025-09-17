@@ -17,9 +17,6 @@ main() {
     #   use 'm' for 1024^2 and 'g' for 1024^3
     local media='base_mmc_2g.img'
     local deb_dist='trixie'
-    local hostname="${deb_dist}-arm64"
-    local acct_uid='debian'
-    local acct_pass='debian'
     local hostname="${PI_HOSTNAME:-${deb_dist}-arm64}"
     local acct_uid="${PI_USERNAME:-debian}"
     local acct_pass="${PI_PASSWORD:-debian}"
@@ -30,16 +27,16 @@ main() {
         rm -rf cache*/var
         rm -f "$media"*
         rm -rf "$mountpt"
-        echo '\nclean complete\n'
+        echo -e '\nclean complete\n'
         exit 0
     fi
 
-    check_installed 'debootstrap' 'wget' 'xz-utils' 'rsync'
+    check_installed 'debootstrap' 'wget' 'xz' 'rsync'
 
     if [ -f "$media" ]; then
         read -p "file $media exists, overwrite? <y/N> " yn
         if ! [ "$yn" = 'y' -o "$yn" = 'Y' -o "$yn" = 'yes' -o "$yn" = 'Yes' ]; then
-            echo 'exiting...'
+            echo -e 'exiting...'
             exit 0
         fi
     fi
@@ -50,7 +47,7 @@ main() {
     # linux firmware
     local lfw=$(download "$cache" 'https://mirrors.edge.kernel.org/pub/linux/kernel/firmware/linux-firmware-20250808.tar.xz')
     local lfwsha='c029551b45a15926c9d7a5df1a0b540044064f19157c57fc11d91fd0aade837f'
-    [ "$lfwsha" = $(sha256sum "$lfw" | cut -c1-64) ] || { echo "invalid hash for $lfw"; exit 5; }
+    [ "$lfwsha" = $(sha256sum "$lfw" | cut -c1-64) ] || { echo -e "invalid hash for $lfw"; exit 5; }
 
     # setup media
     print_hdr 'creating image file'
@@ -71,7 +68,7 @@ main() {
     print_hdr 'setting up fstab'
     local mdev="$(findmnt -no source "$mountpt")"
     local uuid="$(sudo blkid -o value -s UUID "$mdev")"
-    echo "$(file_fstab $uuid)\n" | sudo tee "$mountpt/etc/fstab"
+    echo -e "$(file_fstab $uuid)\n" | sudo tee "$mountpt/etc/fstab"
 
     print_hdr 'setting up extlinux boot'
     sudo install -Dvm 754 'files/dtb_cp' "$mountpt/etc/kernel/postinst.d/dtb_cp"
@@ -136,8 +133,8 @@ main() {
     sudo rsync -aAXH "$debian_root/" "$mountpt"
 
     # apt sources & default locale
-    echo "$(file_apt_sources $deb_dist)\n" | sudo tee "$mountpt/etc/apt/sources.list"
-    echo "$(file_locale_cfg)\n" | sudo tee "$mountpt/etc/default/locale"
+    echo -e "$(file_apt_sources $deb_dist)\n" | sudo tee "$mountpt/etc/apt/sources.list"
+    echo -e "$(file_locale_cfg)\n" | sudo tee "$mountpt/etc/default/locale"
 
     # enable ll alias
     sudo sed -i '/alias.ll=/s/^#*\s*//' "$mountpt/etc/skel/.bashrc"
@@ -149,14 +146,14 @@ main() {
     is_param 'motd' "$@" && [ -f '../etc/motd' ] && sudo cp -f '../etc/motd' "$mountpt/etc"
 
     # hostname
-    echo $hostname | sudo tee "$mountpt/etc/hostname"
+    echo -e $hostname | sudo tee "$mountpt/etc/hostname"
     sudo sed -i "s/127.0.0.1\tlocalhost/127.0.0.1\tlocalhost\n127.0.1.1\t$hostname/" "$mountpt/etc/hosts"
 
     print_hdr 'creating user account'
     sudo chroot "$mountpt" /usr/sbin/useradd -m "$acct_uid" -s '/bin/bash'
-    sudo chroot "$mountpt" /bin/sh -c "/usr/bin/echo $acct_uid:$acct_pass | /usr/sbin/chpasswd -c YESCRYPT"
+    sudo chroot "$mountpt" /bin/sh -c "/usr/bin/echo -e $acct_uid:$acct_pass | /usr/sbin/chpasswd -c YESCRYPT"
     sudo chroot "$mountpt" /usr/bin/passwd -e "$acct_uid"
-    (umask 377 && echo "$acct_uid ALL=(ALL) NOPASSWD: ALL" | sudo tee "$mountpt/etc/sudoers.d/$acct_uid")
+    (umask 377 && echo -e "$acct_uid ALL=(ALL) NOPASSWD: ALL" | sudo tee "$mountpt/etc/sudoers.d/$acct_uid")
 
     print_hdr 'installing rootfs expansion script to /etc/rc.local'
     sudo install -Dvm 754 'files/rc.local' "$mountpt/etc/rc.local"
@@ -169,7 +166,7 @@ main() {
         print_hdr "found ssh key $ssh_key"
         sudo mkdir "$mountpt/home/$acct_uid/.ssh"
         sudo chmod 700 "$mountpt/home/$acct_uid/.ssh"
-        echo "$ssh_key" > "$mountpt/home/$acct_uid/.ssh/authorized_keys"
+        echo -e "$ssh_key" > "$mountpt/home/$acct_uid/.ssh/authorized_keys"
         sudo chmod 600 "$mountpt/home/$acct_uid/.ssh/authorized_keys"
         sudo chown -R 1000:1000 "$mountpt/home/$acct_uid/.ssh"
     fi
@@ -187,15 +184,15 @@ main() {
     sudo rm -rf "$mountpt"
 
     chmod 444 "$media" # source image should be treated as immutable
-    echo "\n${cya}$media image is now ready${rst}"
-    echo
+    echo -e "\n${cya}$media image is now ready${rst}"
+    echo -e
 }
 
 make_image_file() {
     local media="$1"
 
     rm -f "$media"*
-    local size="$(echo "$media" | sed -rn 's/.*mmc_([[:digit:]]+[m|g])\.img$/\1/p')"
+    local size="$(echo -e "$media" | sed -rn 's/.*mmc_([[:digit:]]+[m|g])\.img$/\1/p')"
     truncate -s "$size" "$media"
     stat --printf='image file: %n\nsize: %s bytes\n' "$media"
 }
@@ -220,8 +217,8 @@ format_media() {
     # create ext4 filesystem
     lodev="$(/usr/sbin/losetup -f)"
     sudo losetup -vP "$lodev" "$media" && sync
-    echo "loop device $lodev created for image file $media\n"
-    echo "formatting ${lodev}p${partnum} as ext4\n"
+    echo -e "loop device $lodev created for image file $media\n"
+    echo -e "formatting ${lodev}p${partnum} as ext4\n"
     sudo mkfs.ext4 -L rootfs -vO metadata_csum_seed "${lodev}p${partnum}" && sync
     #losetup -vd "$lodev" && sync
 }
@@ -231,7 +228,7 @@ mount_media() {
     local partnum="1"
 
     if ! [ -f "$media" ]; then
-        echo "file not found: $media"
+        echo -e "file not found: $media"
         exit 4
     fi
 
@@ -245,11 +242,11 @@ mount_media() {
 
     sudo mount "${lodev}p${partnum}" "$mountpt"
     if ! [ -d "$mountpt/lost+found" ]; then
-        echo 'failed to mount the image file'
+        echo -e 'failed to mount the image file'
         exit 3
     fi
 
-    echo "media ${cya}$media${rst} partition $partnum successfully mounted on ${cya}$mountpt${rst}"
+    echo -e "media ${cya}$media${rst} partition $partnum successfully mounted on ${cya}$mountpt${rst}"
 }
 
 check_mount_only() {
@@ -265,9 +262,9 @@ check_mount_only() {
 
     if [ ! -f "$img" ]; then
         if [ -z "$img" ]; then
-            echo "no image file specified"
+            echo -e "no image file specified"
         else
-            echo "file not found: ${red}$img${rst}"
+            echo -e "file not found: ${red}$img${rst}"
         fi
         exit 3
     fi
@@ -275,19 +272,19 @@ check_mount_only() {
     if [ "$img" = *.xz ]; then
         local tmp=$(basename "$img" .xz)
         if [ -f "$tmp" ]; then
-            echo "compressed file ${bld}$img${rst} was specified but uncompressed file ${bld}$tmp${rst} exists..."
-            echo -n "mount ${bld}$tmp${rst}"
+            echo -e "compressed file ${bld}$img${rst} was specified but uncompressed file ${bld}$tmp${rst} exists..."
+            echo -e -n "mount ${bld}$tmp${rst}"
             read -p " instead? <Y/n> " yn
             if ! [ -z "$yn" -o "$yn" = 'y' -o "$yn" = 'Y' -o "$yn" = 'yes' -o "$yn" = 'Yes' ]; then
-                echo 'exiting...'
+                echo -e 'exiting...'
                 exit 0
             fi
             img=$tmp
         else
-            echo -n "compressed file ${bld}$img${rst} was specified"
+            echo -e -n "compressed file ${bld}$img${rst} was specified"
             read -p ', decompress to mount? <Y/n>' yn
             if ! [ -z "$yn" -o "$yn" = 'y' -o "$yn" = 'Y' -o "$yn" = 'yes' -o "$yn" = 'Yes' ]; then
-                echo 'exiting...'
+                echo -e 'exiting...'
                 exit 0
             fi
             xz -dk "$img"
@@ -295,10 +292,10 @@ check_mount_only() {
         fi
     fi
 
-    echo "mounting file ${yel}$img${rst}..."
+    echo -e "mounting file ${yel}$img${rst}..."
     mount_media "$img"
     trap - EXIT INT QUIT ABRT TERM
-    echo "media mounted, use ${grn}sudo umount $mountpt${rst} to unmount"
+    echo -e "media mounted, use ${grn}sudo umount $mountpt${rst} to unmount"
 
     exit 0
 }
@@ -312,7 +309,7 @@ on_exit() {
         read -p "$mountpt is still mounted, unmount? <Y/n> " yn
         [ -z "$yn" -o "$yn" = 'y' -o "$yn" = 'Y' -o "$yn" = 'yes' -o "$yn" = 'Yes' ] || exit 0
 
-        echo "unmounting $mountpt"
+        echo -e "unmounting $mountpt"
         sudo umount "$mountpt"
         sync
         rm -rf "$mountpt"
@@ -392,7 +389,7 @@ download() {
     [ -f "$filepath" ] || wget "$url" -P "$cache"
     [ -f "$filepath" ] || exit 2
 
-    echo "$filepath"
+    echo -e "$filepath"
 }
 
 is_param() {
@@ -415,19 +412,19 @@ check_installed() {
     done
 
     if [ ! -z "$todo" ]; then
-        echo "this script requires the following packages:${bld}${yel}$todo${rst}"
+        echo -e "this script requires the following packages:${bld}${yel}$todo${rst}"
         exit 1
     fi
 }
 
 print_hdr() {
     local msg="$1"
-    echo "\n${h1}$msg...${rst}"
+    echo -e "\n${h1}$msg...${rst}"
 }
 
 print_err() {
     local msg="$1"
-    echo "\n${bld}${yel}error: $msg${rst}\n" >&2
+    echo -e "\n${bld}${yel}error: $msg${rst}\n" >&2
 }
 
 rst='\033[m'
@@ -449,7 +446,7 @@ fi
 
 # require arm64
 uname_m=$(uname -m)
-if [ "$uname_m" != 'aarch64' ]; then
+if [ "$uname_m" != 'aarch64' || command -v qemu-aarch64-static 2&>/dev/null ]; then
     print_err "this project requires an ARM64 architecture, but '$uname_m' was detected"
     exit 1
 fi

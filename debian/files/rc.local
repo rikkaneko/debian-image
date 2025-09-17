@@ -19,20 +19,20 @@ else
 
     # expand root parition & change uuid
     rp="$(findmnt -no source /)"
-    rpn="$(echo "$rp" | grep -Eo '[[:digit:]]*$')"
+    rpn="$(echo -e "$rp" | grep -Eo '[[:digit:]]*$')"
     rd="/dev/$(lsblk -no pkname "$rp")"
     uuid="$(cat /proc/sys/kernel/random/uuid)"
-    echo "size=+, uuid=$uuid" | sfdisk -f -N "$rpn" "$rd"
+    echo -e "size=+, uuid=$uuid" | sfdisk -f -N "$rpn" "$rd"
 
     # change rootfs uuid
     uuid="$(cat /proc/sys/kernel/random/uuid)"
-    echo "changing rootfs uuid: $uuid"
+    echo -e "changing rootfs uuid: $uuid"
     tune2fs -U "$uuid" "$rp"
     sed -i "s|$(findmnt -fsno source '/')|UUID=$uuid|" '/etc/fstab'
     /boot/mk_extlinux
 
     ## net-config ##
-    
+
     systemctl enable systemd-networkd.service
     systemctl enable dnsmasq.servive
 
