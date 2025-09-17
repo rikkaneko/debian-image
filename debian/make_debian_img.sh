@@ -20,7 +20,11 @@ main() {
     local hostname="${deb_dist}-arm64"
     local acct_uid='debian'
     local acct_pass='debian'
-    local extra_pkgs='bc, curl, pciutils, sudo, unzip, wget, xxd, xz-utils, zip, zstd'
+    local hostname="${PI_HOSTNAME:-${deb_dist}-arm64}"
+    local acct_uid="${PI_USERNAME:-debian}"
+    local acct_pass="${PI_PASSWORD:-debian}"
+    local extra_pkgs="${PI_EXTRA_PKGS:-}"
+    local ssh_key="${PI_SSH_KEY:-}"
 
     if is_param 'clean' "$@"; then
         rm -rf cache*/var
@@ -30,7 +34,7 @@ main() {
         exit 0
     fi
 
-    check_installed 'debootstrap' 'wget' 'xz-utils'
+    check_installed 'debootstrap' 'wget' 'xz-utils' 'rsync'
 
     if [ -f "$media" ]; then
         read -p "file $media exists, overwrite? <y/N> " yn
@@ -108,18 +112,28 @@ main() {
     # install debian linux from deb packages (debootstrap)
     print_hdr 'installing root filesystem from debian.org'
 
-    # do not write the cache to the image
-    sudo mkdir -p "$cache/var/cache" "$cache/var/lib/apt/lists"
-    sudo mkdir -p "$mountpt/var/cache" "$mountpt/var/lib/apt/lists"
-    sudo mount -o bind "$cache/var/cache" "$mountpt/var/cache"
-    sudo mount -o bind "$cache/var/lib/apt/lists" "$mountpt/var/lib/apt/lists"
-
     local pkgs="initramfs-tools, dbus, dhcpcd, libpam-systemd, openssh-server, systemd-timesyncd, \
-                rfkill, wireless-regdb, wpasupplicant"
-    sudo debootstrap --arch arm64 --include "$pkgs, $extra_pkgs" --exclude "isc-dhcp-client" "$deb_dist" "$mountpt" 'https://deb.debian.org/debian/'
+                rfkill, wireless-regdb, wpasupplicant, bc, curl, pciutils, sudo, unzip, wget, xxd, \
+                xz-utils, zip, zstd dnsmasq"
+    
 
-    sudo umount "$mountpt/var/cache"
-    sudo umount "$mountpt/var/lib/apt/lists"
+    local debian_root="$cache/debootstrap"
+    if [ ! -d "$debian_root" ]; then
+        print_hdr "building debian root at $debian_root."
+        # do not write the cache to the image
+        mkdir -p "$cache/var/cache" "$cache/var/lib/apt/lists"
+        mkdir -p "$debian_root/var/cache" "$debian_root/var/lib/apt/lists"
+        mount -o bind "$cache/var/cache" "$debian_root/var/cache"
+        mount -o bind "$cache/var/lib/apt/lists" "$debian_root/var/lib/apt/lists"
+
+        debootstrap --arch arm64 --include "$pkgs, $extra_pkgs" --exclude "isc-dhcp-client" "$deb_dist" "$debian_root" 'https://deb.debian.org/debian/'
+
+        umount "$debian_root/var/cache"
+        umount "$debian_root/var/lib/apt/lists"
+    else
+        print_hdr "found built debian root at $debian_root."
+    fi
+    rsync -aAXH "$debian_root/" "$mountpt"
 
     # apt sources & default locale
     echo "$(file_apt_sources $deb_dist)\n" | sudo tee "$mountpt/etc/apt/sources.list"
@@ -151,6 +165,17 @@ main() {
     sudo rm -fv "$mountpt/etc/systemd/system/sshd.service"
     sudo rm -fv "$mountpt/etc/systemd/system/multi-user.target.wants/ssh.service"
     #sudo rm -fv "$mountpt/etc/ssh/ssh_host_"*
+    if [ -n "$ssh_key" ]; then
+        print_hdr "found ssh key $ssh_key"
+        sudo mkdir "$mountpt/home/$acct_uid/.ssh"
+        sudo chmod 700 "$mountpt/home/$acct_uid/.ssh"
+        echo "$ssh_key" > "$mountpt/home/$acct_uid/.ssh/authorized_keys"
+        sudo chmod 600 "$mountpt/home/$acct_uid/.ssh/authorized_keys"
+        sudo chown -R 1000:1000 "$mountpt/home/$acct_uid/.ssh"
+    fi
+
+    # Disable DHCP server before configured
+    sudo rm -fv "$mountpt/etc/systemd/system/multi-user.target.wants/dnsmasq.service"
 
     # generate machine id on first boot
     sudo truncate -s0 "$mountpt/etc/machine-id"
@@ -386,12 +411,11 @@ is_param() {
 check_installed() {
     local item todo
     for item in "$@"; do
-        dpkg -l "$item" 2>/dev/null | grep -q "ii  $item" || todo="$todo $item"
+        command -v "$item" 2>/dev/null || todo="$todo $item"
     done
 
     if [ ! -z "$todo" ]; then
         echo "this script requires the following packages:${bld}${yel}$todo${rst}"
-        echo "   run: ${bld}${grn}sudo apt update && sudo apt -y install$todo${rst}\n"
         exit 1
     fi
 }

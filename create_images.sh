@@ -46,7 +46,7 @@ main() {
     done
 
     # compress images
-    xz -z8v "$outbin/"*".img"
+    xz -zv -T 0 -k "$outbin/"*".img"
 }
 
 setup_image() {
@@ -114,7 +114,7 @@ setup_network() {
     # post setup: inject network config if file exists
     if [ -f "configs/network_${board}.cfg" ]; then
         phead "setting up networking for ${yel}$board"
-        sudo sed -i "/setup for expand fs/e cat configs/network_${board}.cfg" "$mountpt/etc/rc.local"
+        sudo sed -i "/## net-config ##/e cat configs/network_${board}.cfg" "$mountpt/etc/rc.local"
     fi
 }
 
