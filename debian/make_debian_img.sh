@@ -166,7 +166,7 @@ main() {
         print_hdr "found ssh key $ssh_key"
         sudo mkdir "$mountpt/home/$acct_uid/.ssh"
         sudo chmod 700 "$mountpt/home/$acct_uid/.ssh"
-        echo -e "$ssh_key" > "$mountpt/home/$acct_uid/.ssh/authorized_keys"
+        echo -e "$ssh_key" | sudo tee "$mountpt/home/$acct_uid/.ssh/authorized_keys"
         sudo chmod 600 "$mountpt/home/$acct_uid/.ssh/authorized_keys"
         sudo chown -R 1000:1000 "$mountpt/home/$acct_uid/.ssh"
     fi
