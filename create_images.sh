@@ -358,8 +358,8 @@ fi
 
 # require arm64
 uname_m=$(uname -m)
-if [ "$uname_m" != 'aarch64' ]; then
-    perr "this project requires an ARM64 architecture, but '$uname_m' was detected"
+if [ "$uname_m" != 'aarch64' ] && ! command -v qemu-aarch64-static >/dev/null 2>&1; then
+    print_err "This project requires an ARM64 architecture, but '$uname_m' was detected"
     exit 1
 fi
 
