@@ -121,19 +121,19 @@ main() {
     if [ ! -d "$debian_root" ]; then
         print_hdr "building debian root at $debian_root."
         # do not write the cache to the image
-        mkdir -p "$cache/var/cache" "$cache/var/lib/apt/lists"
-        mkdir -p "$debian_root/var/cache" "$debian_root/var/lib/apt/lists"
-        mount -o bind "$cache/var/cache" "$debian_root/var/cache"
-        mount -o bind "$cache/var/lib/apt/lists" "$debian_root/var/lib/apt/lists"
+        sudo mkdir -p "$cache/var/cache" "$cache/var/lib/apt/lists"
+        sudo mkdir -p "$debian_root/var/cache" "$debian_root/var/lib/apt/lists"
+        sudo mount -o bind "$cache/var/cache" "$debian_root/var/cache"
+        sudo mount -o bind "$cache/var/lib/apt/lists" "$debian_root/var/lib/apt/lists"
 
-        debootstrap --arch arm64 --include "$pkgs, $extra_pkgs" --exclude "isc-dhcp-client" "$deb_dist" "$debian_root" 'https://deb.debian.org/debian/'
+        sudo debootstrap --arch arm64 --include "$pkgs, $extra_pkgs" --exclude "isc-dhcp-client" "$deb_dist" "$debian_root" 'https://deb.debian.org/debian/'
 
-        umount "$debian_root/var/cache"
-        umount "$debian_root/var/lib/apt/lists"
+        sudo umount "$debian_root/var/cache"
+        sudo umount "$debian_root/var/lib/apt/lists"
     else
         print_hdr "found built debian root at $debian_root."
     fi
-    rsync -aAXH "$debian_root/" "$mountpt"
+    sudo rsync -aAXH "$debian_root/" "$mountpt"
 
     # apt sources & default locale
     echo "$(file_apt_sources $deb_dist)\n" | sudo tee "$mountpt/etc/apt/sources.list"
